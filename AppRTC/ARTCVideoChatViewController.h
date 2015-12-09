@@ -13,8 +13,6 @@
 @interface ARTCVideoChatViewController : UIViewController <ARDAppClientDelegate, RTCEAGLVideoViewDelegate>
 
 //Views, Labels, and Buttons
-@property (strong, nonatomic) IBOutlet RTCEAGLVideoView *remoteView;
-@property (strong, nonatomic) IBOutlet RTCEAGLVideoView *localView;
 @property (strong, nonatomic) IBOutlet UIView *footerView;
 @property (strong, nonatomic) IBOutlet UILabel *urlLabel;
 @property (strong, nonatomic) IBOutlet UIView *buttonContainerView;
@@ -37,8 +35,6 @@
 @property (strong, nonatomic) NSString *roomUrl;
 @property (strong, nonatomic) NSString *roomName;
 @property (strong, nonatomic) ARDAppClient *client;
-@property (strong, nonatomic) RTCVideoTrack *localVideoTrack;
-@property (strong, nonatomic) RTCVideoTrack *remoteVideoTrack;
 @property (assign, nonatomic) CGSize localVideoSize;
 @property (assign, nonatomic) CGSize remoteVideoSize;
 @property (assign, nonatomic) BOOL isZoom; //used for double tap remote view

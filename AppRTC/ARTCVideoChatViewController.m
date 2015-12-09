@@ -34,9 +34,6 @@
     [tapGestureRecognizer setNumberOfTapsRequired:2];
     [self.view addGestureRecognizer:tapGestureRecognizer];
     
-    //RTCEAGLVideoViewDelegate provides notifications on video frame dimensions
-    [self.remoteView setDelegate:self];
-    [self.localView setDelegate:self];
 
     //Getting Orientation change
     [[NSNotificationCenter defaultCenter] addObserver:self
@@ -83,8 +80,6 @@
 }
 
 - (void)orientationChanged:(NSNotification *)notification{
-    [self videoView:self.localView didChangeVideoSize:self.localVideoSize];
-    [self videoView:self.remoteView didChangeVideoSize:self.remoteVideoSize];
 }
 
 - (BOOL)prefersStatusBarHidden {
@@ -98,21 +93,11 @@
 
 - (void)disconnect {
     if (self.client) {
-        if (self.localVideoTrack) [self.localVideoTrack removeRenderer:self.localView];
-        if (self.remoteVideoTrack) [self.remoteVideoTrack removeRenderer:self.remoteView];
-        self.localVideoTrack = nil;
-        [self.localView renderFrame:nil];
-        self.remoteVideoTrack = nil;
-        [self.remoteView renderFrame:nil];
         [self.client disconnect];
     }
 }
 
 - (void)remoteDisconnected {
-    if (self.remoteVideoTrack) [self.remoteVideoTrack removeRenderer:self.remoteView];
-    self.remoteVideoTrack = nil;
-    [self.remoteView renderFrame:nil];
-    [self videoView:self.localView didChangeVideoSize:self.localVideoSize];
     
 }
 
@@ -132,7 +117,6 @@
 - (void)zoomRemote {
     //Toggle Aspect Fill or Fit
     self.isZoom = !self.isZoom;
-    [self videoView:self.remoteView didChangeVideoSize:self.remoteVideoSize];
 }
 
 - (IBAction)audioButtonPressed:(id)sender {
@@ -189,27 +173,10 @@
 }
 
 - (void)appClient:(ARDAppClient *)client didReceiveLocalVideoTrack:(RTCVideoTrack *)localVideoTrack {
-    if (self.localVideoTrack) {
-        [self.localVideoTrack removeRenderer:self.localView];
-        self.localVideoTrack = nil;
-        [self.localView renderFrame:nil];
-    }
-    self.localVideoTrack = localVideoTrack;
-    [self.localVideoTrack addRenderer:self.localView];
 }
 
 - (void)appClient:(ARDAppClient *)client didReceiveRemoteVideoTrack:(RTCVideoTrack *)remoteVideoTrack {
-    self.remoteVideoTrack = remoteVideoTrack;
-    [self.remoteVideoTrack addRenderer:self.remoteView];
-    
-    [UIView animateWithDuration:0.4f animations:^{
-        [self.localViewBottomConstraint setConstant:28.0f];
-        [self.localViewRightConstraint setConstant:28.0f];
-        [self.localViewHeightConstraint setConstant:self.view.frame.size.height/4.0f];
-        [self.localViewWidthConstraint setConstant:self.view.frame.size.width/4.0f];
-        [self.footerViewBottomConstraint setConstant:-80.0f];
-        [self.view layoutIfNeeded];
-    }];
+
 }
 
 - (void)appClient:(ARDAppClient *)client didError:(NSError *)error {
@@ -225,54 +192,6 @@
 #pragma mark - RTCEAGLVideoViewDelegate
 
 - (void)videoView:(RTCEAGLVideoView *)videoView didChangeVideoSize:(CGSize)size {
-    UIDeviceOrientation orientation = [[UIDevice currentDevice] orientation];
-    [UIView animateWithDuration:0.4f animations:^{
-        CGFloat containerWidth = self.view.frame.size.width;
-        CGFloat containerHeight = self.view.frame.size.height;
-        CGSize defaultAspectRatio = CGSizeMake(4, 3);
-        if (videoView == self.localView) {
-            //Resize the Local View depending if it is full screen or thumbnail
-            self.localVideoSize = size;
-            CGSize aspectRatio = CGSizeEqualToSize(size, CGSizeZero) ? defaultAspectRatio : size;
-            CGRect videoRect = self.view.bounds;
-            if (self.remoteVideoTrack) {
-                videoRect = CGRectMake(0.0f, 0.0f, self.view.frame.size.width/4.0f, self.view.frame.size.height/4.0f);
-                if (orientation == UIDeviceOrientationLandscapeLeft || orientation == UIDeviceOrientationLandscapeRight) {
-                    videoRect = CGRectMake(0.0f, 0.0f, self.view.frame.size.height/4.0f, self.view.frame.size.width/4.0f);
-                }
-            }
-            CGRect videoFrame = AVMakeRectWithAspectRatioInsideRect(aspectRatio, videoRect);
-
-            //Resize the localView accordingly
-            [self.localViewWidthConstraint setConstant:videoFrame.size.width];
-            [self.localViewHeightConstraint setConstant:videoFrame.size.height];
-            if (self.remoteVideoTrack) {
-                [self.localViewBottomConstraint setConstant:28.0f]; //bottom right corner
-                [self.localViewRightConstraint setConstant:28.0f];
-            } else {
-                [self.localViewBottomConstraint setConstant:containerHeight/2.0f - videoFrame.size.height/2.0f]; //center
-                [self.localViewRightConstraint setConstant:containerWidth/2.0f - videoFrame.size.width/2.0f]; //center
-            }
-        } else if (videoView == self.remoteView) {
-            //Resize Remote View
-            self.remoteVideoSize = size;
-            CGSize aspectRatio = CGSizeEqualToSize(size, CGSizeZero) ? defaultAspectRatio : size;
-            CGRect videoRect = self.view.bounds;
-            CGRect videoFrame = AVMakeRectWithAspectRatioInsideRect(aspectRatio, videoRect);
-            if (self.isZoom) {
-                //Set Aspect Fill
-                CGFloat scale = MAX(containerWidth/videoFrame.size.width, containerHeight/videoFrame.size.height);
-                videoFrame.size.width *= scale;
-                videoFrame.size.height *= scale;
-            }
-            [self.remoteViewTopConstraint setConstant:containerHeight/2.0f - videoFrame.size.height/2.0f];
-            [self.remoteViewBottomConstraint setConstant:containerHeight/2.0f - videoFrame.size.height/2.0f];
-            [self.remoteViewLeftConstraint setConstant:containerWidth/2.0f - videoFrame.size.width/2.0f]; //center
-            [self.remoteViewRightConstraint setConstant:containerWidth/2.0f - videoFrame.size.width/2.0f]; //center
-            
-        }
-        [self.view layoutIfNeeded];
-    }];
 
 }
 

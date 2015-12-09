@@ -138,20 +138,6 @@ static NSInteger kARDAppClientErrorInvalidRoom = -7;
 }
 
 - (void)orientationChanged:(NSNotification *)notification {
-    UIDeviceOrientation orientation = [[UIDevice currentDevice] orientation];
-    if (UIDeviceOrientationIsLandscape(orientation) || UIDeviceOrientationIsPortrait(orientation)) {
-        //Remove current video track
-        RTCMediaStream *localStream = _peerConnection.localStreams[0];
-        [localStream removeVideoTrack:localStream.videoTracks[0]];
-        
-        RTCVideoTrack *localVideoTrack = [self createLocalVideoTrack];
-        if (localVideoTrack) {
-            [localStream addVideoTrack:localVideoTrack];
-            [_delegate appClient:self didReceiveLocalVideoTrack:localVideoTrack];
-        }
-        [_peerConnection removeStream:localStream];
-        [_peerConnection addStream:localStream];
-    }
 }
 
 
@@ -293,12 +279,6 @@ static NSInteger kARDAppClientErrorInvalidRoom = -7;
     NSLog(@"Received %lu video tracks and %lu audio tracks",
         (unsigned long)stream.videoTracks.count,
         (unsigned long)stream.audioTracks.count);
-    if (stream.videoTracks.count) {
-      RTCVideoTrack *videoTrack = stream.videoTracks[0];
-      [_delegate appClient:self didReceiveRemoteVideoTrack:videoTrack];
-      if (_isSpeakerEnabled) [self enableSpeaker]; //Use the "handsfree" speaker instead of the ear speaker.
-
-    }
   });
 }
 
@@ -479,35 +459,12 @@ static NSInteger kARDAppClientErrorInvalidRoom = -7;
     // https://code.google.com/p/webrtc/issues/detail?id=3417.
 
     RTCVideoTrack *localVideoTrack = nil;
-#if !TARGET_IPHONE_SIMULATOR && TARGET_OS_IPHONE
-
-    NSString *cameraID = nil;
-    for (AVCaptureDevice *captureDevice in
-         [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo]) {
-        if (captureDevice.position == AVCaptureDevicePositionFront) {
-            cameraID = [captureDevice localizedName];
-            break;
-        }
-    }
-    NSAssert(cameraID, @"Unable to get the front camera id");
-    
-    RTCVideoCapturer *capturer = [RTCVideoCapturer capturerWithDeviceName:cameraID];
-    RTCMediaConstraints *mediaConstraints = [self defaultMediaStreamConstraints];
-    RTCVideoSource *videoSource = [_factory videoSourceWithCapturer:capturer constraints:mediaConstraints];
-    localVideoTrack = [_factory videoTrackWithID:@"ARDAMSv0" source:videoSource];
-#endif
     return localVideoTrack;
 }
 
 - (RTCMediaStream *)createLocalMediaStream {
     RTCMediaStream* localStream = [_factory mediaStreamWithLabel:@"ARDAMS"];
 
-    RTCVideoTrack *localVideoTrack = [self createLocalVideoTrack];
-    if (localVideoTrack) {
-        [localStream addVideoTrack:localVideoTrack];
-        [_delegate appClient:self didReceiveLocalVideoTrack:localVideoTrack];
-    }
-    
     [localStream addAudioTrack:[_factory audioTrackWithID:@"ARDAMSa0"]];
     if (_isSpeakerEnabled) [self enableSpeaker];
     return localStream;
@@ -746,48 +703,21 @@ static NSInteger kARDAppClientErrorInvalidRoom = -7;
 #pragma mark - swap camera
 - (RTCVideoTrack *)createLocalVideoTrackBackCamera {
     RTCVideoTrack *localVideoTrack = nil;
-#if !TARGET_IPHONE_SIMULATOR && TARGET_OS_IPHONE
-    //AVCaptureDevicePositionFront
-    NSString *cameraID = nil;
-    for (AVCaptureDevice *captureDevice in
-         [AVCaptureDevice devicesWithMediaType:AVMediaTypeVideo]) {
-        if (captureDevice.position == AVCaptureDevicePositionBack) {
-            cameraID = [captureDevice localizedName];
-            break;
-        }
-    }
-    NSAssert(cameraID, @"Unable to get the back camera id");
-    
-    RTCVideoCapturer *capturer = [RTCVideoCapturer capturerWithDeviceName:cameraID];
-    RTCMediaConstraints *mediaConstraints = [self defaultMediaStreamConstraints];
-    RTCVideoSource *videoSource = [_factory videoSourceWithCapturer:capturer constraints:mediaConstraints];
-    localVideoTrack = [_factory videoTrackWithID:@"ARDAMSv0" source:videoSource];
-#endif
+
     return localVideoTrack;
 }
 - (void)swapCameraToFront{
     RTCMediaStream *localStream = _peerConnection.localStreams[0];
     [localStream removeVideoTrack:localStream.videoTracks[0]];
     
-    RTCVideoTrack *localVideoTrack = [self createLocalVideoTrack];
 
-    if (localVideoTrack) {
-        [localStream addVideoTrack:localVideoTrack];
-        [_delegate appClient:self didReceiveLocalVideoTrack:localVideoTrack];
-    }
     [_peerConnection removeStream:localStream];
     [_peerConnection addStream:localStream];
 }
 - (void)swapCameraToBack{
     RTCMediaStream *localStream = _peerConnection.localStreams[0];
     [localStream removeVideoTrack:localStream.videoTracks[0]];
-    
-    RTCVideoTrack *localVideoTrack = [self createLocalVideoTrackBackCamera];
-    
-    if (localVideoTrack) {
-        [localStream addVideoTrack:localVideoTrack];
-        [_delegate appClient:self didReceiveLocalVideoTrack:localVideoTrack];
-    }
+
     [_peerConnection removeStream:localStream];
     [_peerConnection addStream:localStream];
 }
